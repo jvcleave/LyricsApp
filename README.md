@@ -30,4 +30,6 @@ swift test --package-path Packages/LyricsKit
 The LyricsApp Xcode project also links the local package product, which keeps the reference app and package integration building together.
 
 example usage
+
+
 <img width="610" height="437" alt="image" src="https://github.com/user-attachments/assets/b9c682f0-44e1-4973-bcd6-d05ca6420426" />
