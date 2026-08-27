@@ -15,7 +15,7 @@ LyricsKit supports macOS 15 and iOS 18. It provides:
 
 Use `AudioTrackMetadataResolver` to identify a local track, `LyricsLookupService` to find a result or ranked candidates, and `LyricsContentResolver` to prepare the returned lyrics for presentation.
 
-Both the LyricsApp project and MESS reference `Packages/LyricsKit` directly. Keep the package separate from the repository root: pointing Xcode at the root also containing `LyricsApp.xcodeproj` caused a workspace loading conflict. MESS consumes only the package, not the LyricsApp project.
+The LyricsApp project references `Packages/LyricsKit` directly. The package lives in its own directory to avoid Xcode workspace loading conflicts with `LyricsApp.xcodeproj` at the repository root.
 
 Publishing LyricsKit as a remote dependency later requires a repository with this package at its root.
 
