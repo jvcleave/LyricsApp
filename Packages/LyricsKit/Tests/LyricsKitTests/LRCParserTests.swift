@@ -1,5 +1,5 @@
+@testable import LyricsKit
 import Testing
-@testable import LyricsApp
 
 struct LRCParserTests {
     @Test

@@ -1,4 +1,5 @@
 import Foundation
+import LyricsKit
 import Observation
 import OSLog
 
@@ -87,7 +88,7 @@ final class LyricsFinderViewModel {
         operationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let embedded = try await metadataReader.read(from: fileURL)
+                let embedded = try await metadataReader.read(fileURL: fileURL)
                 try Task.checkCancellation()
                 let guessed = filenameParser.parse(fileURL: fileURL)
                 applyImportedMetadata(embedded, guessed: guessed)
@@ -121,7 +122,7 @@ final class LyricsFinderViewModel {
             guard let self else { return }
             do {
                 Self.logger.debug("Trying LRCLIB exact lookup")
-                if let exact = try await lyricsService.exactMatch(for: input) {
+                if let exact = try await lyricsService.exactMatch(input: input) {
                     try Task.checkCancellation()
                     Self.logger.debug("Found exact LRCLIB match: \(exact.artistName, privacy: .public) - \(exact.trackName, privacy: .public)")
                     showLyrics(exact)
@@ -131,7 +132,7 @@ final class LyricsFinderViewModel {
                 try await Task.sleep(for: .milliseconds(250))
                 try Task.checkCancellation()
                 Self.logger.debug("Trying LRCLIB fallback search")
-                let searchResults = try await lyricsService.search(for: input)
+                let searchResults = try await lyricsService.search(input: input)
                 try Task.checkCancellation()
                 applySearchResults(searchResults, input: input)
             } catch is CancellationError {
@@ -177,7 +178,7 @@ final class LyricsFinderViewModel {
             return
         }
 
-        let ranked = ranker.ranked(results, for: input)
+        let ranked = ranker.ranked(results: results, input: input)
         guard let best = ranked.first else {
             phase = .notFound
             return
@@ -185,7 +186,7 @@ final class LyricsFinderViewModel {
 
         Self.logger.debug("LRCLIB fallback found \(ranked.count) candidates")
         if ranker.shouldSelectAutomatically(
-            best,
+            best: best,
             runnerUp: ranked.dropFirst().first,
             input: input
         ) {

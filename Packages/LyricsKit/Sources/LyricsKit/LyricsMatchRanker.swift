@@ -1,27 +1,14 @@
 import Foundation
 
-struct LyricsMatchInput: Sendable {
-    let title: String
-    let artist: String
-    let album: String
-    let duration: TimeInterval?
-}
+public struct LyricsMatchRanker: Sendable {
+    public init() {}
 
-struct RankedLyricsCandidate: Sendable {
-    let result: LyricsResult
-    let score: Int
-    let durationDifference: TimeInterval?
-    let exactTitle: Bool
-    let exactArtist: Bool
-}
-
-struct LyricsMatchRanker: Sendable {
-    func ranked(
-        _ results: [LyricsResult],
-        for input: LyricsMatchInput
+    public func ranked(
+        results: [LyricsResult],
+        input: LyricsMatchInput
     ) -> [RankedLyricsCandidate] {
         results
-            .map { result in rank(result, for: input) }
+            .map { result in rank(result: result, input: input) }
             .sorted {
                 if $0.score == $1.score {
                     return ($0.durationDifference ?? .greatestFiniteMagnitude)
@@ -31,8 +18,8 @@ struct LyricsMatchRanker: Sendable {
             }
     }
 
-    func shouldSelectAutomatically(
-        _ best: RankedLyricsCandidate,
+    public func shouldSelectAutomatically(
+        best: RankedLyricsCandidate,
         runnerUp: RankedLyricsCandidate?,
         input: LyricsMatchInput
     ) -> Bool {
@@ -48,8 +35,8 @@ struct LyricsMatchRanker: Sendable {
     }
 
     private func rank(
-        _ result: LyricsResult,
-        for input: LyricsMatchInput
+        result: LyricsResult,
+        input: LyricsMatchInput
     ) -> RankedLyricsCandidate {
         let inputTitle = normalized(input.title)
         let resultTitle = normalized(result.trackName)
@@ -58,23 +45,23 @@ struct LyricsMatchRanker: Sendable {
         let inputAlbum = normalized(input.album)
         let resultAlbum = normalized(result.albumName ?? "")
 
-        let exactTitle = !inputTitle.isEmpty && inputTitle == resultTitle
-        let exactArtist = !inputArtist.isEmpty && inputArtist == resultArtist
+        let exactTitle = inputTitle.isEmpty == false && inputTitle == resultTitle
+        let exactArtist = inputArtist.isEmpty == false && inputArtist == resultArtist
         var score = 0
 
         if exactTitle {
             score += 140
-        } else if containsEither(inputTitle, resultTitle) {
+        } else if containsEither(first: inputTitle, second: resultTitle) {
             score += 55
         }
 
         if exactArtist {
             score += 160
-        } else if containsEither(inputArtist, resultArtist) {
+        } else if containsEither(first: inputArtist, second: resultArtist) {
             score += 45
         }
 
-        if !inputAlbum.isEmpty && inputAlbum == resultAlbum {
+        if inputAlbum.isEmpty == false && inputAlbum == resultAlbum {
             score += 35
         }
 
@@ -83,16 +70,16 @@ struct LyricsMatchRanker: Sendable {
             let difference = abs(inputDuration - resultDuration)
             durationDifference = difference
             switch difference {
-            case ...2:
-                score += 40
-            case ...5:
-                score += 30
-            case ...10:
-                score += 20
-            case ...20:
-                score += 10
-            default:
-                break
+                case ...2:
+                    score += 40
+                case ...5:
+                    score += 30
+                case ...10:
+                    score += 20
+                case ...20:
+                    score += 10
+                default:
+                    break
             }
         } else {
             durationDifference = nil
@@ -111,12 +98,17 @@ struct LyricsMatchRanker: Sendable {
         value
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
+            .filter { $0.isEmpty == false }
             .joined(separator: " ")
     }
 
-    private func containsEither(_ first: String, _ second: String) -> Bool {
-        guard !first.isEmpty, !second.isEmpty else { return false }
+    private func containsEither(
+        first: String,
+        second: String
+    ) -> Bool {
+        if first.isEmpty || second.isEmpty {
+            return false
+        }
         return first.contains(second) || second.contains(first)
     }
 }

@@ -11,6 +11,10 @@
 		A10000013040B37D007E543F /* LyricsAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LyricsAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXBuildFile section */
+		A20000013040B37D007E543F /* LyricsKit in Frameworks */ = {isa = PBXBuildFile; productRef = A20000043040B37D007E543F /* LyricsKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		03ACA7C73040B37D007E543F /* LyricsApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -39,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A20000013040B37D007E543F /* LyricsKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +95,7 @@
 			);
 			name = LyricsApp;
 			packageProductDependencies = (
+				A20000043040B37D007E543F /* LyricsKit */,
 			);
 			productName = LyricsApp;
 			productReference = 03ACA7C53040B37D007E543F /* LyricsApp.app */;
@@ -148,6 +154,9 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 03ACA7C63040B37D007E543F /* Products */;
+			packageReferences = (
+				A20000033040B37D007E543F /* XCLocalSwiftPackageReference "Packages/LyricsKit" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -459,6 +468,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A20000033040B37D007E543F /* XCLocalSwiftPackageReference "Packages/LyricsKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/LyricsKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A20000043040B37D007E543F /* LyricsKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A20000033040B37D007E543F /* XCLocalSwiftPackageReference "Packages/LyricsKit" */;
+			productName = LyricsKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 03ACA7BD3040B37D007E543F /* Project object */;
 }

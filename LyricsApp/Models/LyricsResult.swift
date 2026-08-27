@@ -1,15 +1,5 @@
 import Foundation
-
-struct LyricsResult: Codable, Identifiable, Sendable {
-    let id: Int
-    let trackName: String
-    let artistName: String
-    let albumName: String?
-    let duration: Double?
-    let instrumental: Bool
-    let plainLyrics: String?
-    let syncedLyrics: String?
-}
+import LyricsKit
 
 struct LyricsCandidateDisplayItem: Identifiable, Sendable {
     let id: Int

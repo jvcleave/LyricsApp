@@ -1,3 +1,4 @@
+import LyricsKit
 import SwiftUI
 
 struct LyricsView: View {
