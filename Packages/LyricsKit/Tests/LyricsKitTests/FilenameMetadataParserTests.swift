@@ -23,6 +23,11 @@ struct FilenameMetadataParserTests {
                 "BLACKPINK",
                 "붐바야 (BOOMBAYAH) (Official 4K 60FPS Video)"
             ),
+            (
+                "BLACKPINK - 뚜두뚜두 (DDU-DU DDU-DU) [Official 4K 60FPS Video] [Z8u1KxB_19Y].quicktime.mp4",
+                "BLACKPINK",
+                "뚜두뚜두 (DDU-DU DDU-DU) [Official 4K 60FPS Video]"
+            ),
         ]
     )
     func parsesCommonFileNames(

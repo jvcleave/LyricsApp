@@ -19,7 +19,12 @@ public struct FilenameMetadataParser: Sendable {
         }
 
         var name = sourceURL.lastPathComponent
-            .replacingOccurrences(of: "_", with: " ")
+        name = name.replacingOccurrences(
+            of: Self.trailingVideoIDPattern,
+            with: "",
+            options: .regularExpression
+        )
+        name = name.replacingOccurrences(of: "_", with: " ")
         name = name.replacingOccurrences(
             of: Self.leadingTrackPattern,
             with: "",

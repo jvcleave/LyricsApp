@@ -8,7 +8,7 @@ LyricsKit supports macOS 15 and iOS 18. It provides:
 
 - embedded audio metadata reading with filename fallback
 - exact and search-based LRCLIB lookup
-- up to five title attempts that progressively remove trailing wrapped annotations after a no-result response
+- up to five lookup attempts, with the second removing wrapped annotations throughout the title, artist, and album
 - candidate ranking using track identity and duration
 - synchronized LRC parsing
 - synchronized, plain, instrumental, and unavailable content resolution
