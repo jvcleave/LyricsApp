@@ -50,8 +50,7 @@ final class LyricsFinderViewModel {
 
     @ObservationIgnored private let metadataReader: AudioMetadataReader
     @ObservationIgnored private let filenameParser: FilenameMetadataParser
-    @ObservationIgnored private let lyricsService: LRCLibService
-    @ObservationIgnored private let ranker: LyricsMatchRanker
+    @ObservationIgnored private let lookupService: LyricsLookupService
     @ObservationIgnored private let lrcParser: LRCParser
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var candidatesByID: [Int: LyricsResult] = [:]
@@ -65,14 +64,12 @@ final class LyricsFinderViewModel {
     init(
         metadataReader: AudioMetadataReader = AudioMetadataReader(),
         filenameParser: FilenameMetadataParser = FilenameMetadataParser(),
-        lyricsService: LRCLibService = LRCLibService(),
-        ranker: LyricsMatchRanker = LyricsMatchRanker(),
+        lookupService: LyricsLookupService = LyricsLookupService(),
         lrcParser: LRCParser = LRCParser()
     ) {
         self.metadataReader = metadataReader
         self.filenameParser = filenameParser
-        self.lyricsService = lyricsService
-        self.ranker = ranker
+        self.lookupService = lookupService
         self.lrcParser = lrcParser
     }
 
@@ -121,20 +118,18 @@ final class LyricsFinderViewModel {
         operationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                Self.logger.debug("Trying LRCLIB exact lookup")
-                if let exact = try await lyricsService.exactMatch(input: input) {
-                    try Task.checkCancellation()
-                    Self.logger.debug("Found exact LRCLIB match: \(exact.artistName, privacy: .public) - \(exact.trackName, privacy: .public)")
-                    showLyrics(exact)
-                    return
+                Self.logger.debug("Trying LRCLIB lookup with bounded title fallbacks")
+                let outcome = try await lookupService.findLyrics(input: input)
+                try Task.checkCancellation()
+                switch outcome {
+                    case let .match(result):
+                        Self.logger.debug("Found LRCLIB match: \(result.artistName, privacy: .public) - \(result.trackName, privacy: .public)")
+                        showLyrics(result)
+                    case let .candidates(rankedCandidates):
+                        applyRankedCandidates(rankedCandidates)
+                    case .notFound:
+                        phase = .notFound
                 }
-
-                try await Task.sleep(for: .milliseconds(250))
-                try Task.checkCancellation()
-                Self.logger.debug("Trying LRCLIB fallback search")
-                let searchResults = try await lyricsService.search(input: input)
-                try Task.checkCancellation()
-                applySearchResults(searchResults, input: input)
             } catch is CancellationError {
                 return
             } catch {
@@ -169,36 +164,17 @@ final class LyricsFinderViewModel {
         Self.logger.debug("Detected duration: \(self.durationText, privacy: .public)")
     }
 
-    private func applySearchResults(
-        _ results: [LyricsResult],
-        input: LyricsMatchInput
-    ) {
-        guard !results.isEmpty else {
+    private func applyRankedCandidates(_ rankedCandidates: [RankedLyricsCandidate]) {
+        guard rankedCandidates.isEmpty == false else {
             phase = .notFound
-            return
-        }
-
-        let ranked = ranker.ranked(results: results, input: input)
-        guard let best = ranked.first else {
-            phase = .notFound
-            return
-        }
-
-        Self.logger.debug("LRCLIB fallback found \(ranked.count) candidates")
-        if ranker.shouldSelectAutomatically(
-            best: best,
-            runnerUp: ranked.dropFirst().first,
-            input: input
-        ) {
-            Self.logger.debug("Automatically selected: \(best.result.artistName, privacy: .public) - \(best.result.trackName, privacy: .public)")
-            showLyrics(best.result)
             return
         }
 
         candidatesByID = Dictionary(
-            uniqueKeysWithValues: ranked.map { ($0.result.id, $0.result) }
+            uniqueKeysWithValues: rankedCandidates.map { ($0.result.id, $0.result) }
         )
-        phase = .candidates(ranked.map(makeCandidateDisplayItem))
+        Self.logger.debug("LRCLIB lookup found \(rankedCandidates.count) candidates")
+        phase = .candidates(rankedCandidates.map(makeCandidateDisplayItem))
     }
 
     private func showLyrics(_ result: LyricsResult) {

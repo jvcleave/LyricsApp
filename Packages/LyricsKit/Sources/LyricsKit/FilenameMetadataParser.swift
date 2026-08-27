@@ -2,13 +2,23 @@ import Foundation
 
 public struct FilenameMetadataParser: Sendable {
     private static let leadingTrackPattern = #"^\s*\d{1,3}\s*(?:[-–—.]\s*)+"#
-    private static let noiseSuffixPattern = #"\s*[\(\[]\s*(?:official\s+audio|official\s+video|lyrics?|lyric\s+video|music\s+video|hd|4k)\s*[\)\]]\s*$"#
+    private static let noiseSuffixPattern = #"\s*[\(\[]\s*(?:official\s+audio|official\s+music\s+video|official\s+video|lyrics?|lyric\s+video|music\s+video|hd|4k)\s*[\)\]]\s*$"#
+    private static let trailingVideoIDPattern = #"\s*\[[A-Za-z0-9_-]{11}\]\s*$"#
     private static let artistTitleSeparatorPattern = #"\s+[-–—]\s+"#
+    private static let mediaExtensions: Set<String> = [
+        "aac", "aif", "aiff", "avi", "caf", "flac", "m4a", "m4v", "mkv",
+        "mov", "mp3", "mp4", "ogg", "opus", "quicktime", "wav", "webm",
+    ]
 
     public init() {}
 
     public func parse(fileURL: URL) -> FilenameMetadata {
-        var name = fileURL.deletingPathExtension().lastPathComponent
+        var sourceURL = fileURL
+        while Self.mediaExtensions.contains(sourceURL.pathExtension.lowercased()) {
+            sourceURL.deletePathExtension()
+        }
+
+        var name = sourceURL.lastPathComponent
             .replacingOccurrences(of: "_", with: " ")
         name = name.replacingOccurrences(
             of: Self.leadingTrackPattern,
@@ -19,6 +29,11 @@ public struct FilenameMetadataParser: Sendable {
         var previousName: String
         repeat {
             previousName = name
+            name = name.replacingOccurrences(
+                of: Self.trailingVideoIDPattern,
+                with: "",
+                options: .regularExpression
+            )
             name = name.replacingOccurrences(
                 of: Self.noiseSuffixPattern,
                 with: "",

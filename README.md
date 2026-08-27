@@ -1,6 +1,6 @@
 # LyricsApp and LyricsKit
 
-LyricsApp is the small reference app for finding lyrics for a local audio file. Its reusable implementation lives in the `LyricsKit` Swift package at `Packages/LyricsKit`.
+LyricsApp is the small reference app for finding lyrics for a local audio file. The importer accepts system-recognized audio formats, including MP3, M4A, AAC, CAF, WAV, AIFF, and compatible lossless formats. Its reusable implementation lives in the `LyricsKit` Swift package at `Packages/LyricsKit`.
 
 ## LyricsKit
 
@@ -8,6 +8,7 @@ LyricsKit supports macOS 15 and iOS 18. It provides:
 
 - embedded audio metadata reading with filename fallback
 - exact and search-based LRCLIB lookup
+- up to five title attempts that progressively remove trailing wrapped annotations after a no-result response
 - candidate ranking using track identity and duration
 - synchronized LRC parsing
 - synchronized, plain, instrumental, and unavailable content resolution

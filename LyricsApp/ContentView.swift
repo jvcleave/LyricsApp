@@ -15,7 +15,7 @@ struct ContentView: View {
                     isShowingImporter = true
                 } label: {
                     Label(
-                        viewModel.hasImportedFile ? "Import Another File" : "Import MP3",
+                        viewModel.hasImportedFile ? "Import Another File" : "Import Audio",
                         systemImage: "music.note"
                     )
                 }
@@ -74,9 +74,9 @@ struct ContentView: View {
         switch viewModel.phase {
         case .idle:
             ContentUnavailableView(
-                "Import an MP3",
+                "Import Audio",
                 systemImage: "music.note.list",
-                description: Text("Choose an audio file to read its track information.")
+                description: Text("Choose an audio file, including MP3, M4A, or CAF, to read its track information.")
             )
         case .importing, .ready:
             if viewModel.hasImportedFile {
