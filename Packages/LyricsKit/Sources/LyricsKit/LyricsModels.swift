@@ -87,9 +87,9 @@ public struct LyricsMatchInput: Sendable {
         album: String,
         duration: TimeInterval?
     ) {
-        self.title = title
-        self.artist = artist
-        self.album = album
+        self.title = title.precomposedStringWithCanonicalMapping
+        self.artist = artist.precomposedStringWithCanonicalMapping
+        self.album = album.precomposedStringWithCanonicalMapping
         self.duration = duration
     }
 }

@@ -85,4 +85,26 @@ struct LyricsLookupFallbackBuilderTests {
         ])
         #expect(inputs.allSatisfy { $0.artist == "BLACKPINK" })
     }
+
+    @Test func handlesKoreanDownloadedVideoName() {
+        let fileURL = URL(
+            fileURLWithPath: "BLACKPINK - 마지막처럼 (AS IF IT'S YOUR LAST) [Official 4K 60FPS Video] [hTkIPx1Lpuw].quicktime.mp4"
+        )
+        let metadata = FilenameMetadataParser().parse(fileURL: fileURL)
+        let input = LyricsMatchInput(
+            title: metadata.title,
+            artist: metadata.artist,
+            album: "",
+            duration: 216.767
+        )
+
+        let inputs = LyricsLookupFallbackBuilder().inputs(startingWith: input)
+
+        #expect(inputs.map(\.title) == [
+            "마지막처럼 (AS IF IT'S YOUR LAST) [Official 4K 60FPS Video]",
+            "마지막처럼 (AS IF IT'S YOUR LAST)",
+            "마지막처럼",
+        ])
+        #expect(inputs.allSatisfy { $0.artist == "BLACKPINK" })
+    }
 }
