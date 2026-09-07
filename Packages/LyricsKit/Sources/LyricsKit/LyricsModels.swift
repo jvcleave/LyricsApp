@@ -1,6 +1,6 @@
 import Foundation
 
-public enum LyricsProvider: String, Codable, Equatable, Sendable {
+public enum LyricsProvider: String, CaseIterable, Codable, Equatable, Sendable {
     case lrclib
     case lrcmux
 

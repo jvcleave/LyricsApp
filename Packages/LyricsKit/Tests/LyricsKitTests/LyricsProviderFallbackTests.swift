@@ -117,6 +117,78 @@ struct LyricsProviderFallbackTests {
         #expect(lrcmuxRequestCount == 0)
     }
 
+    @Test func preferredLrcmuxResultBypassesLrclib() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        var lrclibRequestCount = 0
+        LyricsURLProtocol.handler = { request in
+            if request.url?.host == "lrclib.test" {
+                lrclibRequestCount += 1
+                return response(
+                    request: request,
+                    statusCode: 200,
+                    body: lrclibTimedJSON
+                )
+            }
+            return response(
+                request: request,
+                statusCode: 200,
+                body: lrcmuxTimedJSON
+            )
+        }
+
+        let lookupService = makeLookupService(session: session)
+        let outcome = try await lookupService.findLyrics(
+            input: matchInput,
+            requirement: .synchronized,
+            preferredProvider: .lrcmux
+        )
+
+        if case let .match(result) = outcome {
+            #expect(result.provider == .lrcmux)
+        } else {
+            Issue.record("Expected a preferred LRCMÜX match")
+        }
+        #expect(lrclibRequestCount == 0)
+    }
+
+    @Test func preferredLrcmuxMissFallsBackToLrclib() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        var requestedHosts: [String] = []
+        LyricsURLProtocol.handler = { request in
+            requestedHosts.append(request.url?.host ?? "")
+            if request.url?.host == "lrcmux.test" {
+                return response(request: request, statusCode: 404)
+            }
+            return response(
+                request: request,
+                statusCode: 200,
+                body: lrclibTimedJSON
+            )
+        }
+
+        let lookupService = makeLookupService(session: session)
+        let outcome = try await lookupService.findLyrics(
+            input: matchInput,
+            requirement: .synchronized,
+            preferredProvider: .lrcmux
+        )
+
+        if case let .match(result) = outcome {
+            #expect(result.provider == .lrclib)
+        } else {
+            Issue.record("Expected an LRCLIB fallback match")
+        }
+        #expect(requestedHosts == ["lrcmux.test", "lrclib.test"])
+    }
+
     @Test func lrcmuxDecodesInstrumentalResponseWithoutLines() async throws {
         let session = makeSession()
         defer {

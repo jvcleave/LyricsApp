@@ -5,6 +5,11 @@ public actor LyricsLookupService {
         let retryAfter: TimeInterval?
     }
 
+    private enum ProviderAttemptResult {
+        case outcome(LyricsLookupOutcome)
+        case temporaryFailure(TemporaryFailure)
+    }
+
     private let lrclibService: LRCLibService
     private let lrcmuxService: LRCMuxService
     private let ranker: LyricsMatchRanker
@@ -45,63 +50,103 @@ public actor LyricsLookupService {
 
     public func findLyrics(
         input: LyricsMatchInput,
-        requirement: LyricsContentRequirement
+        requirement: LyricsContentRequirement,
+        preferredProvider: LyricsProvider = .lrclib
     ) async throws -> LyricsLookupOutcome {
         if input.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw LyricsLookupError.invalidRequest
         }
 
+        let providerOrder: [LyricsProvider]
+        switch preferredProvider {
+            case .lrclib:
+                providerOrder = [.lrclib, .lrcmux]
+            case .lrcmux:
+                providerOrder = [.lrcmux, .lrclib]
+        }
+
         var temporaryFailures: [TemporaryFailure] = []
+        for provider in providerOrder {
+            try Task.checkCancellation()
+            let attemptResult: ProviderAttemptResult
+            switch provider {
+                case .lrclib:
+                    attemptResult = try await attemptLRCLibLookup(
+                        input: input,
+                        requirement: requirement
+                    )
+                case .lrcmux:
+                    attemptResult = try await attemptLRCMuxLookup(
+                        input: input,
+                        requirement: requirement
+                    )
+            }
+
+            switch attemptResult {
+                case let .outcome(outcome):
+                    switch outcome {
+                        case .match, .candidates:
+                            return outcome
+                        case .notFound:
+                            break
+                    }
+                case let .temporaryFailure(failure):
+                    temporaryFailures.append(failure)
+            }
+        }
+
+        if temporaryFailures.isEmpty {
+            return .notFound
+        }
+        throw temporaryUnavailableError(failures: temporaryFailures)
+    }
+
+    private func attemptLRCLibLookup(
+        input: LyricsMatchInput,
+        requirement: LyricsContentRequirement
+    ) async throws -> ProviderAttemptResult {
         if let retryAfter = remainingCooldown(requestNotBefore: lrclibRequestNotBefore) {
-            temporaryFailures.append(TemporaryFailure(retryAfter: retryAfter))
-        } else {
-            lrclibRequestNotBefore = nil
-            do {
-                let outcome = try await findLRCLibLyrics(
-                    input: input,
-                    requirement: requirement
-                )
-                switch outcome {
-                    case .match, .candidates:
-                        return outcome
-                    case .notFound:
-                        break
-                }
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch let error as LRCLibServiceError {
-                switch error {
-                    case .invalidRequest:
-                        throw LyricsLookupError.invalidRequest
-                    case let .rateLimited(retryAfter):
-                        if let retryAfter, retryAfter > 0 {
-                            lrclibRequestNotBefore = Date().addingTimeInterval(retryAfter)
-                        }
-                        temporaryFailures.append(TemporaryFailure(retryAfter: retryAfter))
-                    case .network, .decoding:
-                        temporaryFailures.append(TemporaryFailure(retryAfter: nil))
-                    case let .server(statusCode, _):
-                        if statusCode >= 500 || statusCode == 0 {
-                            temporaryFailures.append(TemporaryFailure(retryAfter: nil))
-                        } else {
-                            throw LyricsLookupError.invalidRequest
-                        }
-                }
+            return .temporaryFailure(TemporaryFailure(retryAfter: retryAfter))
+        }
+        lrclibRequestNotBefore = nil
+
+        do {
+            let outcome = try await findLRCLibLyrics(
+                input: input,
+                requirement: requirement
+            )
+            return .outcome(outcome)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as LRCLibServiceError {
+            switch error {
+                case .invalidRequest:
+                    throw LyricsLookupError.invalidRequest
+                case let .rateLimited(retryAfter):
+                    if let retryAfter, retryAfter > 0 {
+                        lrclibRequestNotBefore = Date().addingTimeInterval(retryAfter)
+                    }
+                    return .temporaryFailure(TemporaryFailure(retryAfter: retryAfter))
+                case .network, .decoding:
+                    return .temporaryFailure(TemporaryFailure(retryAfter: nil))
+                case let .server(statusCode, _):
+                    if statusCode >= 500 || statusCode == 0 {
+                        return .temporaryFailure(TemporaryFailure(retryAfter: nil))
+                    }
+                    throw LyricsLookupError.invalidRequest
             }
         }
+    }
 
-        try Task.checkCancellation()
-
+    private func attemptLRCMuxLookup(
+        input: LyricsMatchInput,
+        requirement: LyricsContentRequirement
+    ) async throws -> ProviderAttemptResult {
         if input.artist.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if temporaryFailures.isEmpty {
-                return .notFound
-            }
-            throw temporaryUnavailableError(failures: temporaryFailures)
+            return .outcome(.notFound)
         }
-
         if let retryAfter = remainingCooldown(requestNotBefore: lrcmuxRequestNotBefore) {
-            temporaryFailures.append(TemporaryFailure(retryAfter: retryAfter))
-            throw temporaryUnavailableError(failures: temporaryFailures)
+            return .temporaryFailure(TemporaryFailure(retryAfter: retryAfter))
         }
         lrcmuxRequestNotBefore = nil
 
@@ -110,16 +155,11 @@ public actor LyricsLookupService {
                 input: input,
                 requirement: requirement
             ), resultSatisfiesRequirement(result: result, requirement: requirement) {
-                return .match(result)
+                return .outcome(.match(result))
             }
-            if temporaryFailures.isEmpty {
-                return .notFound
-            }
-            throw temporaryUnavailableError(failures: temporaryFailures)
+            return .outcome(.notFound)
         } catch is CancellationError {
             throw CancellationError()
-        } catch let error as LyricsLookupError {
-            throw error
         } catch let error as LRCMuxServiceError {
             switch error {
                 case .invalidRequest:
@@ -128,17 +168,15 @@ public actor LyricsLookupService {
                     if let retryAfter, retryAfter > 0 {
                         lrcmuxRequestNotBefore = Date().addingTimeInterval(retryAfter)
                     }
-                    temporaryFailures.append(TemporaryFailure(retryAfter: retryAfter))
+                    return .temporaryFailure(TemporaryFailure(retryAfter: retryAfter))
                 case .network, .decoding:
-                    temporaryFailures.append(TemporaryFailure(retryAfter: nil))
+                    return .temporaryFailure(TemporaryFailure(retryAfter: nil))
                 case let .server(statusCode, _):
                     if statusCode >= 500 || statusCode == 0 {
-                        temporaryFailures.append(TemporaryFailure(retryAfter: nil))
-                    } else {
-                        throw LyricsLookupError.invalidRequest
+                        return .temporaryFailure(TemporaryFailure(retryAfter: nil))
                     }
+                    throw LyricsLookupError.invalidRequest
             }
-            throw temporaryUnavailableError(failures: temporaryFailures)
         }
     }
 
