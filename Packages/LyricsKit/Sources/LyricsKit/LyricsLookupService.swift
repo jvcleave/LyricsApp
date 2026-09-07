@@ -9,6 +9,7 @@ public actor LyricsLookupService {
     private let lrcmuxService: LRCMuxService
     private let ranker: LyricsMatchRanker
     private let fallbackBuilder: LyricsLookupFallbackBuilder
+    private let contentResolver: LyricsContentResolver
     private var lrclibRequestNotBefore: Date?
     private var lrcmuxRequestNotBefore: Date?
 
@@ -27,6 +28,7 @@ public actor LyricsLookupService {
         )
         self.ranker = ranker
         fallbackBuilder = LyricsLookupFallbackBuilder()
+        contentResolver = LyricsContentResolver()
     }
 
     init(
@@ -38,6 +40,7 @@ public actor LyricsLookupService {
         self.lrcmuxService = lrcmuxService
         self.ranker = ranker
         fallbackBuilder = LyricsLookupFallbackBuilder()
+        contentResolver = LyricsContentResolver()
     }
 
     public func findLyrics(
@@ -188,20 +191,18 @@ public actor LyricsLookupService {
         result: LyricsResult,
         requirement: LyricsContentRequirement
     ) -> Bool {
-        if result.instrumental {
-            return true
-        }
-        if let synchronizedLyrics = result.syncedLyrics,
-           synchronizedLyrics.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
-            return true
-        }
-        switch requirement {
-            case .any:
-                if let plainLyrics = result.plainLyrics {
-                    return plainLyrics.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        let resolvedContent = contentResolver.resolve(result: result)
+        switch resolvedContent {
+            case .synchronized, .instrumental:
+                return true
+            case .plain:
+                switch requirement {
+                    case .any:
+                        return true
+                    case .synchronized:
+                        return false
                 }
-                return false
-            case .synchronized:
+            case .unavailable:
                 return false
         }
     }

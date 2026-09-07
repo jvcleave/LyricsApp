@@ -211,6 +211,44 @@ struct LyricsProviderFallbackTests {
         Issue.record("Expected a confirmed not-found outcome")
     }
 
+    @Test func malformedLrclibTimingFallsBackForSynchronizedLookup() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        LyricsURLProtocol.handler = { request in
+            switch (request.url?.host, request.url?.path) {
+                case ("lrclib.test", "/api/get"):
+                    return response(
+                        request: request,
+                        statusCode: 200,
+                        body: lrclibMalformedTimedJSON
+                    )
+                case ("lrclib.test", "/api/search"):
+                    return response(request: request, statusCode: 200, body: "[]")
+                default:
+                    return response(
+                        request: request,
+                        statusCode: 200,
+                        body: lrcmuxTimedJSON
+                    )
+            }
+        }
+
+        let lookupService = makeLookupService(session: session)
+        let outcome = try await lookupService.findLyrics(
+            input: matchInput,
+            requirement: .synchronized
+        )
+
+        if case let .match(result) = outcome {
+            #expect(result.provider == .lrcmux)
+        } else {
+            Issue.record("Expected LRCMÜX to replace unusable timing")
+        }
+    }
+
     @Test func lrclibOutageAndLrcmuxMissRemainsTemporary() async throws {
         let session = makeSession()
         defer {
@@ -351,6 +389,21 @@ struct LyricsProviderFallbackTests {
           "instrumental": false,
           "plainLyrics": "Plain line",
           "syncedLyrics": null
+        }
+        """
+    }
+
+    private var lrclibMalformedTimedJSON: String {
+        """
+        {
+          "id": 44,
+          "trackName": "Song",
+          "artistName": "Artist",
+          "albumName": "Album",
+          "duration": 181,
+          "instrumental": false,
+          "plainLyrics": "Plain line",
+          "syncedLyrics": "Timing unavailable"
         }
         """
     }
