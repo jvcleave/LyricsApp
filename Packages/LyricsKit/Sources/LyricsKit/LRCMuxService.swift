@@ -62,7 +62,7 @@ public struct LRCMuxService: Sendable {
 
         let track: Track
         let meta: Metadata
-        let lines: [Line]
+        let lines: [Line]?
     }
 
     private let baseURL: URL
@@ -169,9 +169,10 @@ public struct LRCMuxService: Sendable {
                     throw LRCMuxServiceError.decoding
                 }
 
+                let lyricsLines = apiResponse.lines ?? []
                 let synchronizedLyrics: String?
                 if apiResponse.meta.level == "line" || apiResponse.meta.level == "word" {
-                    let timedLines = apiResponse.lines.compactMap { line -> String? in
+                    let timedLines = lyricsLines.compactMap { line -> String? in
                         if let start = line.start {
                             let minutes = start / 60_000
                             let seconds = (start % 60_000) / 1000
@@ -192,7 +193,7 @@ public struct LRCMuxService: Sendable {
                     synchronizedLyrics = nil
                 }
 
-                let plainLines = apiResponse.lines.map(\.text)
+                let plainLines = lyricsLines.map(\.text)
                 let plainLyrics = plainLines.isEmpty ? nil : plainLines.joined(separator: "\n")
                 let source = apiResponse.meta.source.map {
                     LyricsSource(id: $0.id, name: $0.name, url: $0.url)

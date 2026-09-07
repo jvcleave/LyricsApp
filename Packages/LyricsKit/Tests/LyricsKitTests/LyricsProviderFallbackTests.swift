@@ -117,6 +117,71 @@ struct LyricsProviderFallbackTests {
         #expect(lrcmuxRequestCount == 0)
     }
 
+    @Test func lrcmuxDecodesInstrumentalResponseWithoutLines() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        LyricsURLProtocol.handler = { request in
+            response(
+                request: request,
+                statusCode: 200,
+                body: lrcmuxInstrumentalJSON
+            )
+        }
+
+        let service = LRCMuxService(
+            baseURL: URL(string: "https://lrcmux.test")!,
+            session: session,
+            clientIdentifier: "LyricsKitTests/1.0"
+        )
+        let result = try #require(
+            try await service.lyrics(
+                input: matchInput,
+                requirement: .synchronized
+            )
+        )
+
+        #expect(result.instrumental)
+        #expect(result.plainLyrics == nil)
+        #expect(result.syncedLyrics == nil)
+    }
+
+    @Test func lrcmuxExposesRetryAfter() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        LyricsURLProtocol.handler = { request in
+            response(
+                request: request,
+                statusCode: 429,
+                headers: ["Retry-After": "75"]
+            )
+        }
+
+        let service = LRCMuxService(
+            baseURL: URL(string: "https://lrcmux.test")!,
+            session: session,
+            clientIdentifier: "LyricsKitTests/1.0"
+        )
+        do {
+            _ = try await service.lyrics(
+                input: matchInput,
+                requirement: .synchronized
+            )
+            Issue.record("Expected rate limiting")
+        } catch let error as LRCMuxServiceError {
+            if case let .rateLimited(retryAfter) = error {
+                #expect(retryAfter == 75)
+            } else {
+                Issue.record("Expected rate limiting")
+            }
+        }
+    }
+
     @Test func plainLrclibResultOnlyFallsBackWhenSynchronizationIsRequired() async throws {
         let anySession = makeSession()
         defer { anySession.invalidateAndCancel() }
@@ -431,6 +496,30 @@ struct LyricsProviderFallbackTests {
             { "text": "First line", "start": 1250 },
             { "text": "Second line", "start": 3500 }
           ]
+        }
+        """
+    }
+
+    private var lrcmuxInstrumentalJSON: String {
+        """
+        {
+          "track": {
+            "isrc": "TEST123",
+            "title": "Song",
+            "artist": "Artist",
+            "album": "Album",
+            "duration": 181
+          },
+          "meta": {
+            "source": {
+              "id": "ytmusic",
+              "name": "YouTube Music",
+              "url": "https://music.youtube.com"
+            },
+            "level": "none",
+            "instrumental": true
+          },
+          "lines": null
         }
         """
     }
