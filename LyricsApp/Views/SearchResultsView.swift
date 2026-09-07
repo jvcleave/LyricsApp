@@ -2,13 +2,13 @@ import SwiftUI
 
 struct SearchResultsView: View {
     let items: [LyricsCandidateDisplayItem]
-    let onSelect: (Int) -> Void
+    let onSelect: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Choose a Match")
                 .font(.title2.weight(.semibold))
-            Text("Several LRCLIB results could match this file.")
+            Text("Several lyrics results could match this file.")
                 .foregroundStyle(.secondary)
 
             List(items) { item in

@@ -3,7 +3,9 @@ import Testing
 
 @Test func resolvesSynchronizedLyricsBeforePlainLyrics() {
     let result = LyricsResult(
-        id: 1,
+        id: "lrclib:1",
+        provider: .lrclib,
+        upstreamSource: nil,
         trackName: "Song",
         artistName: "Artist",
         albumName: nil,
@@ -25,7 +27,9 @@ import Testing
 
 @Test func fallsBackToNonemptyPlainLines() {
     let result = LyricsResult(
-        id: 2,
+        id: "lrclib:2",
+        provider: .lrclib,
+        upstreamSource: nil,
         trackName: "Song",
         artistName: "Artist",
         albumName: nil,

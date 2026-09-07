@@ -2,7 +2,7 @@ import Foundation
 import LyricsKit
 
 struct LyricsCandidateDisplayItem: Identifiable, Sendable {
-    let id: Int
+    let id: String
     let title: String
     let artist: String
     let album: String?

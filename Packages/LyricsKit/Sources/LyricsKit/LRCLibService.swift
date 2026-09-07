@@ -30,12 +30,37 @@ public enum LRCLibServiceError: LocalizedError, Sendable {
 }
 
 public struct LRCLibService: Sendable {
+    private struct APIResult: Decodable {
+        let id: Int
+        let trackName: String
+        let artistName: String
+        let albumName: String?
+        let duration: Double?
+        let instrumental: Bool
+        let plainLyrics: String?
+        let syncedLyrics: String?
+
+        var lyricsResult: LyricsResult {
+            LyricsResult(
+                id: "lrclib:\(id)",
+                provider: .lrclib,
+                upstreamSource: nil,
+                trackName: trackName,
+                artistName: artistName,
+                albumName: albumName,
+                duration: duration,
+                instrumental: instrumental,
+                plainLyrics: plainLyrics,
+                syncedLyrics: syncedLyrics
+            )
+        }
+    }
+
     private struct APIErrorResponse: Decodable {
         let message: String?
     }
 
-    private static let baseURL = URL(string: "https://lrclib.net")!
-
+    private let baseURL: URL
     private let session: URLSession
     private let clientIdentifier: String
 
@@ -43,6 +68,17 @@ public struct LRCLibService: Sendable {
         session: URLSession = .shared,
         clientIdentifier: String = "LyricsKit/1.0 (https://github.com/jvcleave/LyricsApp)"
     ) {
+        baseURL = URL(string: "https://lrclib.net")!
+        self.session = session
+        self.clientIdentifier = clientIdentifier
+    }
+
+    init(
+        baseURL: URL,
+        session: URLSession,
+        clientIdentifier: String
+    ) {
+        self.baseURL = baseURL
         self.session = session
         self.clientIdentifier = clientIdentifier
     }
@@ -74,7 +110,7 @@ public struct LRCLibService: Sendable {
         }
         try validate(response)
         do {
-            return try JSONDecoder().decode(LyricsResult.self, from: response.data)
+            return try JSONDecoder().decode(APIResult.self, from: response.data).lyricsResult
         } catch {
             throw LRCLibServiceError.decoding
         }
@@ -97,7 +133,7 @@ public struct LRCLibService: Sendable {
         )
         try validate(response)
         do {
-            return try JSONDecoder().decode([LyricsResult].self, from: response.data)
+            return try JSONDecoder().decode([APIResult].self, from: response.data).map(\.lyricsResult)
         } catch {
             throw LRCLibServiceError.decoding
         }
@@ -107,7 +143,7 @@ public struct LRCLibService: Sendable {
         path: [String],
         queryItems: [URLQueryItem]
     ) async throws -> (data: Data, http: HTTPURLResponse) {
-        let endpoint = path.reduce(Self.baseURL) { url, component in
+        let endpoint = path.reduce(baseURL) { url, component in
             url.appendingPathComponent(component)
         }
         if var components = URLComponents(

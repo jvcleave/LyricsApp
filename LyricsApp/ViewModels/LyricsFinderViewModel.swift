@@ -53,7 +53,7 @@ final class LyricsFinderViewModel {
     @ObservationIgnored private let lookupService: LyricsLookupService
     @ObservationIgnored private let lrcParser: LRCParser
     @ObservationIgnored private var operationTask: Task<Void, Never>?
-    @ObservationIgnored private var candidatesByID: [Int: LyricsResult] = [:]
+    @ObservationIgnored private var candidatesByID: [String: LyricsResult] = [:]
     @ObservationIgnored private var isApplyingImportedMetadata = false
 
     private static let logger = Logger(
@@ -118,12 +118,15 @@ final class LyricsFinderViewModel {
         operationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                Self.logger.debug("Trying LRCLIB lookup with bounded title fallbacks")
-                let outcome = try await lookupService.findLyrics(input: input)
+                Self.logger.debug("Trying lyrics lookup with bounded title fallbacks")
+                let outcome = try await lookupService.findLyrics(
+                    input: input,
+                    requirement: .any
+                )
                 try Task.checkCancellation()
                 switch outcome {
                     case let .match(result):
-                        Self.logger.debug("Found LRCLIB match: \(result.artistName, privacy: .public) - \(result.trackName, privacy: .public)")
+                        Self.logger.debug("Found \(result.provider.displayName, privacy: .public) match: \(result.artistName, privacy: .public) - \(result.trackName, privacy: .public)")
                         showLyrics(result)
                     case let .candidates(rankedCandidates):
                         applyRankedCandidates(rankedCandidates)
@@ -139,7 +142,7 @@ final class LyricsFinderViewModel {
         }
     }
 
-    func selectCandidate(id: Int) {
+    func selectCandidate(id: String) {
         guard let result = candidatesByID[id] else { return }
         showLyrics(result)
     }
@@ -173,7 +176,7 @@ final class LyricsFinderViewModel {
         candidatesByID = Dictionary(
             uniqueKeysWithValues: rankedCandidates.map { ($0.result.id, $0.result) }
         )
-        Self.logger.debug("LRCLIB lookup found \(rankedCandidates.count) candidates")
+        Self.logger.debug("Lyrics lookup found \(rankedCandidates.count) candidates")
         phase = .candidates(rankedCandidates.map(makeCandidateDisplayItem))
     }
 

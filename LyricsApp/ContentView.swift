@@ -89,9 +89,9 @@ struct ContentView: View {
         case .searching:
             VStack(spacing: 12) {
                 ProgressView()
-                Text("Searching LRCLIB…")
+                Text("Searching lyrics providers…")
                     .font(.headline)
-                Text("Trying an exact lookup before a broader search.")
+                Text("Trying the primary provider before an independent fallback.")
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

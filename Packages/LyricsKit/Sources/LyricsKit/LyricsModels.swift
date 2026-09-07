@@ -1,7 +1,39 @@
 import Foundation
 
+public enum LyricsProvider: String, Codable, Equatable, Sendable {
+    case lrclib
+    case lrcmux
+
+    public var displayName: String {
+        switch self {
+            case .lrclib:
+                return "LRCLIB"
+            case .lrcmux:
+                return "LRCMÜX"
+        }
+    }
+}
+
+public struct LyricsSource: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let url: URL?
+
+    public init(
+        id: String,
+        name: String,
+        url: URL?
+    ) {
+        self.id = id
+        self.name = name
+        self.url = url
+    }
+}
+
 public struct LyricsResult: Codable, Identifiable, Sendable {
-    public let id: Int
+    public let id: String
+    public let provider: LyricsProvider
+    public let upstreamSource: LyricsSource?
     public let trackName: String
     public let artistName: String
     public let albumName: String?
@@ -11,7 +43,9 @@ public struct LyricsResult: Codable, Identifiable, Sendable {
     public let syncedLyrics: String?
 
     public init(
-        id: Int,
+        id: String,
+        provider: LyricsProvider,
+        upstreamSource: LyricsSource?,
         trackName: String,
         artistName: String,
         albumName: String?,
@@ -21,6 +55,8 @@ public struct LyricsResult: Codable, Identifiable, Sendable {
         syncedLyrics: String?
     ) {
         self.id = id
+        self.provider = provider
+        self.upstreamSource = upstreamSource
         self.trackName = trackName
         self.artistName = artistName
         self.albumName = albumName
@@ -120,6 +156,28 @@ public enum LyricsLookupOutcome: Sendable {
     case match(LyricsResult)
     case candidates([RankedLyricsCandidate])
     case notFound
+}
+
+public enum LyricsContentRequirement: Equatable, Sendable {
+    case any
+    case synchronized
+}
+
+public enum LyricsLookupError: LocalizedError, Sendable {
+    case invalidRequest
+    case temporarilyUnavailable(retryAfter: TimeInterval?)
+
+    public var errorDescription: String? {
+        switch self {
+            case .invalidRequest:
+                return "The lyrics request could not be created."
+            case let .temporarilyUnavailable(retryAfter):
+                if let retryAfter {
+                    return "Lyrics providers are temporarily unavailable. Please try again in \(Int(ceil(retryAfter))) seconds."
+                }
+                return "Lyrics providers are temporarily unavailable. Please try again shortly."
+        }
+    }
 }
 
 public enum ResolvedLyricsContent: Sendable {
