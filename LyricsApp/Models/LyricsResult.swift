@@ -21,5 +21,6 @@ struct LyricsDisplayContent: Sendable {
     let title: String
     let artist: String
     let album: String?
+    let sourceText: String
     let body: Body
 }

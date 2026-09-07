@@ -189,6 +189,47 @@ struct LyricsProviderFallbackTests {
         #expect(requestedHosts == ["lrcmux.test", "lrclib.test"])
     }
 
+    @Test func preferredLrcmuxRateLimitDoesNotPreventLrclibFallback() async throws {
+        let session = makeSession()
+        defer {
+            LyricsURLProtocol.handler = nil
+            session.invalidateAndCancel()
+        }
+        var lrclibRequestCount = 0
+        var lrcmuxRequestCount = 0
+        LyricsURLProtocol.handler = { request in
+            if request.url?.host == "lrcmux.test" {
+                lrcmuxRequestCount += 1
+                return response(
+                    request: request,
+                    statusCode: 429,
+                    headers: ["Retry-After": "120"]
+                )
+            }
+            lrclibRequestCount += 1
+            return response(
+                request: request,
+                statusCode: 200,
+                body: lrclibTimedJSON
+            )
+        }
+
+        let lookupService = makeLookupService(session: session)
+        _ = try await lookupService.findLyrics(
+            input: matchInput,
+            requirement: .synchronized,
+            preferredProvider: .lrcmux
+        )
+        _ = try await lookupService.findLyrics(
+            input: matchInput,
+            requirement: .synchronized,
+            preferredProvider: .lrcmux
+        )
+
+        #expect(lrcmuxRequestCount == 1)
+        #expect(lrclibRequestCount == 2)
+    }
+
     @Test func lrcmuxDecodesInstrumentalResponseWithoutLines() async throws {
         let session = makeSession()
         defer {

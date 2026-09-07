@@ -1,3 +1,4 @@
+import LyricsKit
 import SwiftUI
 
 struct MetadataEditorView: View {
@@ -32,6 +33,24 @@ struct MetadataEditorView: View {
                         TextField("Seconds", text: $viewModel.durationText)
                             .frame(maxWidth: 140)
                         Text("seconds")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                GridRow {
+                    Text("Preferred Provider")
+                    VStack(alignment: .leading, spacing: 5) {
+                        Picker("Preferred Provider", selection: $viewModel.preferredProvider) {
+                            ForEach(LyricsProvider.allCases, id: \.rawValue) { provider in
+                                Text(provider.displayName)
+                                    .tag(provider)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 280)
+
+                        Text(viewModel.providerPreferenceDescription)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }

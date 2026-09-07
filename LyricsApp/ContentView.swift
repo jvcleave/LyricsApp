@@ -61,7 +61,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Lyrics Finder")
                 .font(.largeTitle.weight(.semibold))
-            Text("Import an audio file, check its metadata, then search LRCLIB.")
+            Text("Import an audio file, check its metadata, then search for lyrics.")
                 .foregroundStyle(.secondary)
             Text("Your audio stays on this Mac. Only track metadata is sent when you search.")
                 .font(.caption)
@@ -91,7 +91,7 @@ struct ContentView: View {
                 ProgressView()
                 Text("Searching lyrics providers…")
                     .font(.headline)
-                Text("Trying the primary provider before an independent fallback.")
+                Text(viewModel.providerPreferenceDescription)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

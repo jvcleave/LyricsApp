@@ -16,6 +16,9 @@ struct LyricsView: View {
                     Text(album)
                         .foregroundStyle(.secondary)
                 }
+                Text("Source: \(content.sourceText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Divider()

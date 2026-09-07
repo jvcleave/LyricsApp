@@ -29,6 +29,9 @@ final class LyricsFinderViewModel {
     var durationText = "" {
         didSet { metadataDidChange(from: oldValue, to: durationText) }
     }
+    var preferredProvider: LyricsProvider {
+        didSet { preferredProviderDidChange(previousProvider: oldValue) }
+    }
 
     private(set) var fileName: String?
     private(set) var phase: LyricsFinderPhase = .idle
@@ -47,11 +50,20 @@ final class LyricsFinderViewModel {
             && !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isBusy
     }
+    var providerPreferenceDescription: String {
+        switch preferredProvider {
+            case .lrclib:
+                return "LRCLIB is tried first; LRCMÜX remains available as fallback."
+            case .lrcmux:
+                return "LRCMÜX is tried first; LRCLIB remains available as fallback."
+        }
+    }
 
     @ObservationIgnored private let metadataReader: AudioMetadataReader
     @ObservationIgnored private let filenameParser: FilenameMetadataParser
     @ObservationIgnored private let lookupService: LyricsLookupService
     @ObservationIgnored private let lrcParser: LRCParser
+    @ObservationIgnored private let userDefaults: UserDefaults
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var candidatesByID: [String: LyricsResult] = [:]
     @ObservationIgnored private var isApplyingImportedMetadata = false
@@ -65,12 +77,17 @@ final class LyricsFinderViewModel {
         metadataReader: AudioMetadataReader = AudioMetadataReader(),
         filenameParser: FilenameMetadataParser = FilenameMetadataParser(),
         lookupService: LyricsLookupService = LyricsLookupService(),
-        lrcParser: LRCParser = LRCParser()
+        lrcParser: LRCParser = LRCParser(),
+        userDefaults: UserDefaults = .standard
     ) {
         self.metadataReader = metadataReader
         self.filenameParser = filenameParser
         self.lookupService = lookupService
         self.lrcParser = lrcParser
+        self.userDefaults = userDefaults
+        preferredProvider = LyricsProvider(
+            rawValue: userDefaults.string(forKey: Self.preferredProviderKey) ?? ""
+        ) ?? .lrclib
     }
 
     deinit {
@@ -121,7 +138,8 @@ final class LyricsFinderViewModel {
                 Self.logger.debug("Trying lyrics lookup with bounded title fallbacks")
                 let outcome = try await lookupService.findLyrics(
                     input: input,
-                    requirement: .any
+                    requirement: .any,
+                    preferredProvider: preferredProvider
                 )
                 try Task.checkCancellation()
                 switch outcome {
@@ -195,11 +213,19 @@ final class LyricsFinderViewModel {
             body = .unavailable
         }
 
+        let sourceText: String
+        if let upstreamSource = result.upstreamSource {
+            sourceText = "\(result.provider.displayName) · \(upstreamSource.name)"
+        } else {
+            sourceText = result.provider.displayName
+        }
+
         phase = .found(
             LyricsDisplayContent(
                 title: result.trackName,
                 artist: result.artistName,
                 album: useful(result.albumName),
+                sourceText: sourceText,
                 body: body
             )
         )
@@ -264,6 +290,16 @@ final class LyricsFinderViewModel {
         phase = .ready
     }
 
+    private func preferredProviderDidChange(previousProvider: LyricsProvider) {
+        guard preferredProvider != previousProvider else { return }
+        userDefaults.set(preferredProvider.rawValue, forKey: Self.preferredProviderKey)
+        operationTask?.cancel()
+        candidatesByID.removeAll()
+        if hasImportedFile {
+            phase = .ready
+        }
+    }
+
     private func useful(_ value: String?) -> String? {
         guard let value else { return nil }
         let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -277,6 +313,8 @@ final class LyricsFinderViewModel {
         formatter.zeroFormattingBehavior = .pad
         return formatter
     }()
+
+    private static let preferredProviderKey = "preferredLyricsProvider"
 }
 
 private enum ValidationError: LocalizedError {
