@@ -5,9 +5,15 @@
 This repository contains two related products:
 
 - `LyricsApp/` is the macOS SwiftUI reference app.
-- `Packages/LyricsKit/` is the reusable Swift package and the home of metadata reading, filename parsing, LRCLIB access, matching, and lyrics parsing/resolution.
+- `Packages/LyricsKit/` is a Git submodule of `jvcleave/LyricsKit`, the reusable
+  Swift package for metadata reading, filename parsing, provider access,
+  matching, and lyrics parsing/resolution. Read its own `AGENTS.md` before edits.
 
 Keep the dependency direction one-way: `LyricsApp` may import `LyricsKit`; `LyricsKit` must not depend on the app or SwiftUI.
+
+Initialize it with `git submodule update --init Packages/LyricsKit`. Commit and
+push package changes in the package repository before recording its revision
+in this reference-app repository; preserve unrelated work in both repositories.
 
 The current deployment and language baseline is Swift 6 with complete strict concurrency. The app targets macOS 15.6. `LyricsKit` supports macOS 15 and iOS 18.
 

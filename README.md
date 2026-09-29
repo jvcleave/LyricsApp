@@ -1,6 +1,6 @@
 # LyricsApp and LyricsKit
 
-LyricsApp is the small reference app for finding lyrics for a local audio file. The importer accepts system-recognized audio formats, including MP3, M4A, AAC, CAF, WAV, AIFF, and compatible lossless formats. Its reusable implementation lives in the `LyricsKit` Swift package at `Packages/LyricsKit`.
+LyricsApp is the small reference app for finding lyrics for a local audio file. The importer accepts system-recognized audio formats, including MP3, M4A, AAC, CAF, WAV, AIFF, and compatible lossless formats. Its reusable implementation lives in the standalone [LyricsKit](https://github.com/jvcleave/LyricsKit) Swift package, included as a submodule at `Packages/LyricsKit`.
 
 ## LyricsKit
 
@@ -50,9 +50,17 @@ Every `LyricsResult` identifies its `provider`. LRCMÜX results can additionally
 
 The macOS example app imports a local audio file, lets the user review detected metadata, and exposes a persisted **Preferred Provider** selector. Search results show which provider ultimately supplied the lyrics. Changing the preference clears the displayed result so the next search uses the new order.
 
-The LyricsApp project references `Packages/LyricsKit` directly. The package lives in its own directory to avoid Xcode workspace loading conflicts with `LyricsApp.xcodeproj` at the repository root.
+The LyricsApp project references the standalone package's submodule at
+`Packages/LyricsKit`. Clone this app with `--recurse-submodules`, or initialize
+the package in an existing checkout before building:
 
-Publishing LyricsKit as a remote dependency later requires a repository with this package at its root.
+```bash
+git submodule update --init Packages/LyricsKit
+```
+
+Other applications can consume
+`https://github.com/jvcleave/LyricsKit.git` directly as a remote Swift package.
+The initial standalone version is `0.1.0`.
 
 ## Verification
 
