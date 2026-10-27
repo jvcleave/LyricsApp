@@ -5,5 +5,6 @@ xcuserdata/
 *.xcuserstate
 
 # Local build products
+.build/
 DerivedData/
 build/
